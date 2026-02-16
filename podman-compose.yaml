@@ -1,0 +1,34 @@
+version: "3.8"
+
+services:
+  ocr:
+    build:
+      context: .
+      podmanfile: Containerfile
+    container_name: ocr-watcher
+    # userns: keep-id
+    # user: "marmitc:marmitc"
+    #user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    environment:
+      # Tweak as desired (or override via .env)
+      OCR_LANG: "eng"            # Tesseract language packs, e.g. "eng" or "eng+spa"
+      OPTIMIZE: "3"              # ocrmypdf --optimize level (0-3)
+      JOBS_PER_FILE: "2"         # internal parallelism per file (pages)
+      SCAN_INTERVAL: "10"        # seconds between polling cycles when not using inotify
+      USE_INOTIFY: "1"           # set "0" to disable inotify and just poll
+      OUTPUT_TYPE: "pdfa"        # ocrmypdf --output-type: pdfa|pdf|pdfa-2
+      SIDECAREXT: ".txt"         # sidecar extension for text
+      TZ: "America/Denver"
+    volumes:
+      - ./in:/data/in:Z
+      - ./out:/data/out:Z
+      - ./done:/data/done:Z
+      - ./fail:/data/fail:Z
+    restart: unless-stopped
+    # Optional: run as your host user so files are writable without chmods
+    # user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f watcher.sh >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
